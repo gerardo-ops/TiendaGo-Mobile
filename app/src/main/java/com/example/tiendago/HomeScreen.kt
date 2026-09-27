@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tiendago.data.DashboardResumenResponse
 import com.example.tiendago.data.RetrofitClient
+import com.example.tiendago.data.VentaResponse
+import androidx.compose.foundation.lazy.items
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -46,6 +48,7 @@ fun HomeScreen(
     var menuPerfilAbierto by remember { mutableStateOf(false) }
 
     var dashboardData by remember { mutableStateOf<DashboardResumenResponse?>(null) }
+    var ventasRecientes by remember { mutableStateOf<List<VentaResponse>>(emptyList()) }
     var isLoadingMetrics by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -65,6 +68,17 @@ fun HomeScreen(
                     dashboardData = response.body()
                 } else {
                     errorMessage = "Error al obtener métricas del servidor (HTTP ${response.code()})"
+                }
+
+                // Sincronizar ventas recientes de hoy
+                val histResponse = RetrofitClient.apiService.getHistorialVentas(
+                    authHeader = "Bearer $authToken",
+                    filtroFecha = "Hoy"
+                )
+                if (histResponse.isSuccessful && histResponse.body() != null) {
+                    ventasRecientes = histResponse.body()!!
+                } else {
+                    ventasRecientes = emptyList()
                 }
             } catch (e: Exception) {
                 errorMessage = "No se pudo conectar con la API: ${e.localizedMessage ?: "Verifica la conexión a la red"}"
@@ -788,89 +802,147 @@ fun HomeScreen(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color(0xFF38BDF8),
-                        modifier = Modifier.clickable { /* Ver historial completo */ }
+                        modifier = Modifier.clickable { onNavegarTab("Historial") }
                     )
                 }
             }
 
-            // Estado cuando no hay transacciones registradas en el día
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
-                    border = CardDefaults.outlinedCardBorder().copy(
-                        brush = Brush.horizontalGradient(
-                            listOf(Color(0xFF334155), Color(0xFF1E293B))
-                        )
-                    )
-                ) {
-                    Column(
+            if (ventasRecientes.isEmpty()) {
+                // Estado cuando no hay transacciones registradas en el día
+                item {
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                            .padding(vertical = 4.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                        border = CardDefaults.outlinedCardBorder().copy(
+                            brush = Brush.horizontalGradient(
+                                listOf(Color(0xFF334155), Color(0xFF1E293B))
+                            )
+                        )
                     ) {
-                        Box(
+                        Column(
                             modifier = Modifier
-                                .size(50.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF334155).copy(alpha = 0.5f)),
-                            contentAlignment = Alignment.Center
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ReceiptLong,
-                                contentDescription = null,
-                                tint = Color(0xFF64748B),
-                                modifier = Modifier.size(26.dp)
-                            )
-                        }
+                            Box(
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF334155).copy(alpha = 0.5f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ReceiptLong,
+                                    contentDescription = null,
+                                    tint = Color(0xFF64748B),
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
 
-                        Text(
-                            text = "Sin actividad reciente registrada hoy",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFFE2E8F0),
-                            textAlign = TextAlign.Center
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = "Las transacciones y ventas procesadas en la terminal POS aparecerán aquí en tiempo real.",
-                            fontSize = 12.sp,
-                            color = Color(0xFF94A3B8),
-                            textAlign = TextAlign.Center,
-                            lineHeight = 17.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        OutlinedButton(
-                            onClick = onNuevaVentaClick,
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, Color(0xFF2563EB)),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = Color(0xFF2563EB).copy(alpha = 0.1f)
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AddShoppingCart,
-                                contentDescription = null,
-                                tint = Color(0xFF38BDF8),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Iniciar Primera Venta",
-                                fontSize = 13.sp,
-                                color = Color(0xFF38BDF8),
-                                fontWeight = FontWeight.SemiBold
+                                text = "No se registran ventas el día de hoy",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFFE2E8F0),
+                                textAlign = TextAlign.Center
+                            )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text(
+                                text = "Las transacciones y ventas procesadas en la terminal POS aparecerán aquí en tiempo real.",
+                                fontSize = 12.sp,
+                                color = Color(0xFF94A3B8),
+                                textAlign = TextAlign.Center,
+                                lineHeight = 17.sp
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            OutlinedButton(
+                                onClick = onNuevaVentaClick,
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, Color(0xFF2563EB)),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = Color(0xFF2563EB).copy(alpha = 0.1f)
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AddShoppingCart,
+                                    contentDescription = null,
+                                    tint = Color(0xFF38BDF8),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Iniciar Primera Venta",
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF38BDF8),
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                items(ventasRecientes.take(5), key = { it.idVenta }) { venta ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
+                        border = BorderStroke(1.dp, Color(0xFF334155))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color(0xFF2563EB).copy(alpha = 0.2f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ReceiptLong,
+                                        contentDescription = null,
+                                        tint = Color(0xFF38BDF8),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = "Ticket #${venta.numeroTicket}",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = "${venta.fechaHora} • ${venta.displayMetodoPago}",
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF94A3B8)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = String.format(Locale.US, "$%,.2f", venta.totalVenta),
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF34D399)
                             )
                         }
                     }

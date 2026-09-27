@@ -54,90 +54,6 @@ fun HistorialVentasScreen(
 
     val horaActual = remember { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) }
 
-    // Mock realista de respaldo (Wireframe 5)
-    val mockTickets = remember {
-        listOf(
-            VentaResponse(
-                idVenta = 8942,
-                numeroTicket = "ORD-8942",
-                fechaHora = "18:42",
-                subtotal = 6.40,
-                totalVenta = 6.40,
-                montoRecibido = 10.00,
-                cambioEntregado = 3.60,
-                idMetodoPago = 1,
-                nombreMetodoPago = "Efectivo",
-                detalles = listOf(
-                    DetalleVentaResponse(1, 8942, 1, "Coca-Cola 1.5L", "BEB-01", 1, 2.50, 2.50),
-                    DetalleVentaResponse(2, 8942, 2, "Galletas Oreo Pack", "SNK-05", 1, 1.90, 1.90),
-                    DetalleVentaResponse(3, 8942, 3, "Doritos Mega Queso", "SNK-12", 1, 2.00, 2.00)
-                )
-            ),
-            VentaResponse(
-                idVenta = 8941,
-                numeroTicket = "ORD-8941",
-                fechaHora = "17:15",
-                subtotal = 15.80,
-                totalVenta = 15.80,
-                montoRecibido = 15.80,
-                cambioEntregado = 0.00,
-                idMetodoPago = 2,
-                nombreMetodoPago = "QR Transferencia",
-                detalles = listOf(
-                    DetalleVentaResponse(4, 8941, 4, "Leche Entera 1L", "LAC-01", 2, 1.40, 2.80),
-                    DetalleVentaResponse(5, 8941, 5, "Huevos 12pk", "ABA-09", 1, 3.50, 3.50),
-                    DetalleVentaResponse(6, 8941, 6, "Arroz Superior 5kg", "ABA-01", 1, 9.50, 9.50)
-                )
-            ),
-            VentaResponse(
-                idVenta = 8940,
-                numeroTicket = "ORD-8940",
-                fechaHora = "16:05",
-                subtotal = 3.50,
-                totalVenta = 3.50,
-                montoRecibido = 3.50,
-                cambioEntregado = 0.00,
-                idMetodoPago = 2,
-                nombreMetodoPago = "Tarjeta DÃ©bito",
-                detalles = listOf(
-                    DetalleVentaResponse(7, 8940, 7, "Recarga MÃ³vil 5GB Operador", "SRV-01", 1, 3.50, 3.50)
-                )
-            ),
-            VentaResponse(
-                idVenta = 8939,
-                numeroTicket = "ORD-8939",
-                fechaHora = "14:28",
-                subtotal = 42.00,
-                totalVenta = 42.00,
-                montoRecibido = 42.00,
-                cambioEntregado = 0.00,
-                idMetodoPago = 1,
-                nombreMetodoPago = "Efectivo",
-                detalles = listOf(
-                    DetalleVentaResponse(8, 8939, 8, "Pack Cerveza Especial", "BEB-10", 2, 14.00, 28.00),
-                    DetalleVentaResponse(9, 8939, 9, "Hielo 3kg", "REF-02", 2, 2.50, 5.00),
-                    DetalleVentaResponse(10, 8939, 10, "Snacks Variados Fiesta", "SNK-20", 3, 3.00, 9.00)
-                )
-            ),
-            VentaResponse(
-                idVenta = 8938,
-                numeroTicket = "ORD-8938",
-                fechaHora = "12:10",
-                subtotal = 8.20,
-                totalVenta = 8.20,
-                montoRecibido = 10.00,
-                cambioEntregado = 1.80,
-                idMetodoPago = 1,
-                nombreMetodoPago = "Efectivo",
-                detalles = listOf(
-                    DetalleVentaResponse(11, 8938, 11, "Pan Baguette x2", "PAN-01", 2, 1.50, 3.00),
-                    DetalleVentaResponse(12, 8938, 12, "Queso Crema 200g", "LAC-03", 1, 2.70, 2.70),
-                    DetalleVentaResponse(13, 8938, 13, "Jugo Naranja 1L", "BEB-04", 1, 2.50, 2.50)
-                )
-            )
-        )
-    }
-
     fun cargarHistorial(filtro: String) {
         coroutineScope.launch {
             isLoading = true
@@ -154,13 +70,15 @@ fun HistorialVentasScreen(
                     filtroFecha = filtroParam
                 )
 
-                if (response.isSuccessful && !response.body().isNullOrEmpty()) {
-                    ticketsList = response.body()!!
+                if (response.isSuccessful) {
+                    ticketsList = response.body() ?: emptyList()
                 } else {
-                    ticketsList = mockTickets
+                    ticketsList = emptyList()
+                    Toast.makeText(context, "Error al consultar historial (${response.code()})", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                ticketsList = mockTickets
+                ticketsList = emptyList()
+                Toast.makeText(context, "Error de red: ${e.localizedMessage ?: "No se pudo conectar"}", Toast.LENGTH_SHORT).show()
             } finally {
                 isLoading = false
             }
@@ -491,7 +409,21 @@ fun HistorialVentasScreen(
             // ==========================================
             // LISTA DE TICKETS (Wireframe 5)
             // ==========================================
-            if (filteredTickets.isEmpty() && !isLoading) {
+            if (isLoading) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = TiendaGoColors.PrimaryBlue,
+                            strokeWidth = 3.dp
+                        )
+                    }
+                }
+            } else if (filteredTickets.isEmpty()) {
                 item {
                     Column(
                         modifier = Modifier
@@ -507,15 +439,11 @@ fun HistorialVentasScreen(
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "No hay tickets registrados",
+                            text = "No se registran ventas el día de hoy",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TiendaGoColors.TextSecondary
-                        )
-                        Text(
-                            text = "Las transacciones de este turno aparecerÃ¡n aquÃ­.",
-                            fontSize = 12.sp,
-                            color = TiendaGoColors.TextMuted
+                            color = TiendaGoColors.TextSecondary,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }
                 }
@@ -530,7 +458,6 @@ fun HistorialVentasScreen(
         }
     }
 
-    // DiÃ¡logo Detallado de Ticket (Modal Desglose Wireframe 5)
     selectedTicketParaDetalle?.let { ticket ->
         AlertDialog(
             onDismissRequest = { selectedTicketParaDetalle = null },

@@ -407,7 +407,7 @@ interface TiendaGoApiService {
 
 // --- Cliente Retrofit Singleton ---
 object RetrofitClient {
-    private const val BASE_URL = "http://192.168.0.3:5000/"
+    private const val BASE_URL = "http://192.168.0.9:5000/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

@@ -51,97 +51,28 @@ fun CobroRapidoScreen(
     var isLoading by remember { mutableStateOf(false) }
     var productosList by remember { mutableStateOf<List<ProductoResponse>>(emptyList()) }
 
-    val mockPosProductos = remember {
-        listOf(
-            ProductoResponse(
-                idProducto = 1,
-                codigoBarra = "44021",
-                nombre = "Coca-Cola 500ml",
-                precio = 1.50,
-                stock = 42,
-                idCategoria = 1,
-                nombreCategoria = "Bebidas"
-            ),
-            ProductoResponse(
-                idProducto = 2,
-                codigoBarra = "99014",
-                nombre = "Papas ClÃ¡sicas 115g",
-                precio = 2.00,
-                stock = 8,
-                idCategoria = 2,
-                nombreCategoria = "Snacks"
-            ),
-            ProductoResponse(
-                idProducto = 3,
-                codigoBarra = "31209",
-                nombre = "Arroz Extra 1kg",
-                precio = 1.80,
-                stock = 65,
-                idCategoria = 3,
-                nombreCategoria = "Abarrotes"
-            ),
-            ProductoResponse(
-                idProducto = 4,
-                codigoBarra = "10822",
-                nombre = "Leche Entera 1L",
-                precio = 1.40,
-                stock = 12,
-                idCategoria = 4,
-                nombreCategoria = "LÃ¡cteos"
-            ),
-            ProductoResponse(
-                idProducto = 5,
-                codigoBarra = "77215",
-                nombre = "Pan Blanco Molde",
-                precio = 2.20,
-                stock = 15,
-                idCategoria = 6,
-                nombreCategoria = "PanaderÃ­a"
-            ),
-            ProductoResponse(
-                idProducto = 6,
-                codigoBarra = "88143",
-                nombre = "Agua Mineral 600ml",
-                precio = 0.80,
-                stock = 50,
-                idCategoria = 1,
-                nombreCategoria = "Bebidas"
-            ),
-            ProductoResponse(
-                idProducto = 7,
-                codigoBarra = "66501",
-                nombre = "Chocolate Barra 80g",
-                precio = 1.75,
-                stock = 20,
-                idCategoria = 2,
-                nombreCategoria = "Snacks"
-            ),
-            ProductoResponse(
-                idProducto = 8,
-                codigoBarra = "55412",
-                nombre = "JabÃ³n LÃ­quido 250ml",
-                precio = 2.10,
-                stock = 18,
-                idCategoria = 5,
-                nombreCategoria = "Limpieza"
-            )
-        )
+    fun cargarCatalogo() {
+        coroutineScope.launch {
+            isLoading = true
+            try {
+                val response = RetrofitClient.apiService.getProductos()
+                if (response.isSuccessful) {
+                    productosList = response.body() ?: emptyList()
+                } else {
+                    productosList = emptyList()
+                    Toast.makeText(context, "Error al cargar productos (${response.code()})", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                productosList = emptyList()
+                Toast.makeText(context, "Error de red: ${e.localizedMessage ?: "No se pudo conectar"}", Toast.LENGTH_SHORT).show()
+            } finally {
+                isLoading = false
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
-        isLoading = true
-        try {
-            val response = RetrofitClient.apiService.getProductosActivos()
-            if (response.isSuccessful && !response.body().isNullOrEmpty()) {
-                productosList = response.body()!!
-            } else {
-                productosList = mockPosProductos
-            }
-        } catch (e: Exception) {
-            productosList = mockPosProductos
-        } finally {
-            isLoading = false
-        }
+        cargarCatalogo()
     }
 
     val categorias = listOf("Todos", "Bebidas", "Snacks", "Abarrotes", "LÃ¡cteos", "PanaderÃ­a")
@@ -503,15 +434,55 @@ fun CobroRapidoScreen(
                 }
             }
 
-            items(filteredProductos, key = { it.idProducto }) { producto ->
-                val cantidadEnOrden = PosCartManager.getCantidad(producto.idProducto)
+            if (isLoading) {
+                item(span = { GridItemSpan(2) }) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = TiendaGoColors.PrimaryBlue,
+                            strokeWidth = 3.dp
+                        )
+                    }
+                }
+            } else if (filteredProductos.isEmpty()) {
+                item(span = { GridItemSpan(2) }) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(40.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Inventory,
+                            contentDescription = null,
+                            tint = TiendaGoColors.TextMuted,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "No hay productos registrados en inventario",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TiendaGoColors.TextSecondary,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                }
+            } else {
+                items(filteredProductos, key = { it.idProducto }) { producto ->
+                    val cantidadEnOrden = PosCartManager.getCantidad(producto.idProducto)
 
-                PosProductCard(
-                    producto = producto,
-                    cantidad = cantidadEnOrden,
-                    onIncrementar = { PosCartManager.agregar(producto) },
-                    onDecrementar = { PosCartManager.disminuir(producto) }
-                )
+                    PosProductCard(
+                        producto = producto,
+                        cantidad = cantidadEnOrden,
+                        onIncrementar = { PosCartManager.agregar(producto) },
+                        onDecrementar = { PosCartManager.disminuir(producto) }
+                    )
+                }
             }
         }
     }

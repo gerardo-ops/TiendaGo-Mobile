@@ -10,7 +10,7 @@ data class PosCartItem(
 
 object PosCartManager {
     val items = mutableStateListOf<PosCartItem>()
-    var numeroOrden: String = "8942"
+    var numeroOrden: String = (1000..9999).random().toString()
 
     fun agregar(producto: ProductoResponse) {
         val index = items.indexOfFirst { it.producto.idProducto == producto.idProducto }

@@ -49,83 +49,20 @@ fun InventarioScreen(
     var isLoading by remember { mutableStateOf(false) }
     var productosList by remember { mutableStateOf<List<ProductoResponse>>(emptyList()) }
 
-    val mockProductos = remember {
-        listOf(
-            ProductoResponse(
-                idProducto = 1,
-                codigoBarra = "BEB-001",
-                nombre = "Coca-Cola Original 500ml",
-                precio = 1.50,
-                costoCompra = 1.05,
-                stock = 42,
-                idCategoria = 1,
-                nombreCategoria = "Bebidas"
-            ),
-            ProductoResponse(
-                idProducto = 2,
-                codigoBarra = "SNK-004",
-                nombre = "Papas Fritas Clásicas 115g",
-                precio = 2.00,
-                costoCompra = 1.20,
-                stock = 8,
-                idCategoria = 2,
-                nombreCategoria = "Snacks"
-            ),
-            ProductoResponse(
-                idProducto = 3,
-                codigoBarra = "ABA-112",
-                nombre = "Arroz Superior 1kg",
-                precio = 1.80,
-                costoCompra = 1.25,
-                stock = 65,
-                idCategoria = 3,
-                nombreCategoria = "Abarrotes"
-            ),
-            ProductoResponse(
-                idProducto = 4,
-                codigoBarra = "LAC-005",
-                nombre = "Leche Entera UHT 1L",
-                precio = 1.40,
-                costoCompra = 0.95,
-                stock = 3,
-                idCategoria = 4,
-                nombreCategoria = "Lácteos"
-            ),
-            ProductoResponse(
-                idProducto = 5,
-                codigoBarra = "SNK-029",
-                nombre = "Galletas de Chocolate Pack",
-                precio = 1.20,
-                costoCompra = 0.75,
-                stock = 2,
-                idCategoria = 2,
-                nombreCategoria = "Snacks"
-            ),
-            ProductoResponse(
-                idProducto = 6,
-                codigoBarra = "LIM-018",
-                nombre = "Detergente Multiuso 500g",
-                precio = 2.50,
-                costoCompra = 1.60,
-                stock = 19,
-                idCategoria = 5,
-                nombreCategoria = "Limpieza"
-            )
-        )
-    }
-
     fun cargarProductos() {
         coroutineScope.launch {
             isLoading = true
             try {
                 val response = RetrofitClient.apiService.getProductos()
-                if (response.isSuccessful && !response.body().isNullOrEmpty()) {
-                    productosList = response.body()!!
+                if (response.isSuccessful) {
+                    productosList = response.body() ?: emptyList()
                 } else {
-                    productosList = mockProductos
+                    productosList = emptyList()
+                    Toast.makeText(context, "Error al cargar productos (${response.code()})", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                productosList = mockProductos
+                productosList = emptyList()
+                Toast.makeText(context, "Error de red: ${e.localizedMessage ?: "No se pudo conectar"}", Toast.LENGTH_SHORT).show()
             } finally {
                 isLoading = false
             }
@@ -417,7 +354,21 @@ fun InventarioScreen(
             }
 
             // Lista de tarjetas
-            if (filteredProductos.isEmpty() && !isLoading) {
+            if (isLoading) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = TiendaGoColors.PrimaryBlue,
+                            strokeWidth = 3.dp
+                        )
+                    }
+                }
+            } else if (filteredProductos.isEmpty()) {
                 item {
                     Column(
                         modifier = Modifier
@@ -433,10 +384,11 @@ fun InventarioScreen(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "No se encontraron productos",
+                            text = "No hay productos registrados en inventario",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TiendaGoColors.TextSecondary
+                            color = TiendaGoColors.TextSecondary,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }
                 }

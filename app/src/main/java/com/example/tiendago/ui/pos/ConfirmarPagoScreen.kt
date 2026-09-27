@@ -104,31 +104,14 @@ fun ConfirmarPagoScreen(
 
                 if (response.isSuccessful && response.body() != null) {
                     ventaRegistradaResult = response.body()
+                    showSuccessModal = true
                 } else {
-                    ventaRegistradaResult = VentaResponse(
-                        idVenta = System.currentTimeMillis() % 100000,
-                        numeroTicket = "TCK-${PosCartManager.numeroOrden}-01",
-                        fechaHora = "Hoy",
-                        subtotal = totalVenta,
-                        totalVenta = totalVenta,
-                        montoRecibido = if (selectedMetodoPago == 1) montoRecibido else totalVenta,
-                        cambioEntregado = cambio,
-                        nombreMetodoPago = if (selectedMetodoPago == 1) "Efectivo" else "QR Transferencia"
-                    )
+                    val errorMsg = "Error al procesar la venta (${response.code()}): ${response.errorBody()?.string() ?: "Intente nuevamente"}"
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
                 }
-                showSuccessModal = true
             } catch (e: Exception) {
-                ventaRegistradaResult = VentaResponse(
-                    idVenta = System.currentTimeMillis() % 100000,
-                    numeroTicket = "TCK-${PosCartManager.numeroOrden}-01",
-                    fechaHora = "Hoy",
-                    subtotal = totalVenta,
-                    totalVenta = totalVenta,
-                    montoRecibido = if (selectedMetodoPago == 1) montoRecibido else totalVenta,
-                    cambioEntregado = cambio,
-                    nombreMetodoPago = if (selectedMetodoPago == 1) "Efectivo" else "QR Transferencia"
-                )
-                showSuccessModal = true
+                val errorMsg = "Error de red: ${e.localizedMessage ?: "No se pudo conectar con el servidor"}"
+                Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
             } finally {
                 isProcessing = false
             }
