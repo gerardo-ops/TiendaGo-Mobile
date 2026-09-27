@@ -1,7 +1,6 @@
 package com.example.tiendago
 
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -17,18 +16,19 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.tiendago.data.UserSession
+import com.example.tiendago.ui.historial.HistorialVentasScreen
+import com.example.tiendago.ui.inventario.InventarioScreen
+import com.example.tiendago.ui.inventario.NuevoProductoScreen
+import com.example.tiendago.ui.pos.CobroRapidoScreen
+import com.example.tiendago.ui.pos.ConfirmarPagoScreen
 import com.example.tiendago.ui.theme.TiendaGoTheme
 
 class MainActivity : ComponentActivity() {
@@ -42,11 +42,35 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
-                    val context = LocalContext.current
 
                     var authToken by remember { mutableStateOf<String?>(UserSession.token) }
                     var currentUserName by remember { mutableStateOf(UserSession.nombre) }
                     var currentUserRole by remember { mutableStateOf(UserSession.rol) }
+
+                    fun navegarATab(tabName: String) {
+                        when (tabName) {
+                            "Inicio" -> navController.navigate("dashboard") {
+                                popUpTo("dashboard") { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                            "Productos" -> navController.navigate("inventario") {
+                                popUpTo("dashboard") { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                            "Caja" -> navController.navigate("pos") {
+                                popUpTo("dashboard") { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                            "Historial" -> navController.navigate("historial") {
+                                popUpTo("dashboard") { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    }
 
                     NavHost(
                         navController = navController,
@@ -61,7 +85,6 @@ class MainActivity : ComponentActivity() {
                                     currentUserRole = rol
                                     UserSession.actualizar(token, nombre, rol)
 
-                                    // Navegación limpia al dashboard, removiendo login del backstack
                                     navController.navigate("dashboard") {
                                         popUpTo("login") { inclusive = true }
                                     }
@@ -76,23 +99,13 @@ class MainActivity : ComponentActivity() {
                                 userName = currentUserName,
                                 userRole = currentUserRole,
                                 onNuevaVentaClick = {
-                                    navController.navigate("scanner")
+                                    navController.navigate("pos")
                                 },
                                 onAgregarProductoClick = {
-                                    Toast.makeText(
-                                        context,
-                                        "Acceso a Formulario de Producto (W-04)",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    navController.navigate("nuevo_producto")
                                 },
                                 onNavegarTab = { tab ->
-                                    if (tab != "Inicio") {
-                                        Toast.makeText(
-                                            context,
-                                            "Módulo '$tab' seleccionado",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
+                                    navegarATab(tab)
                                 },
                                 onLogoutClick = {
                                     authToken = null
@@ -104,12 +117,84 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // 3. Pantalla de Scanner / Terminal POS (W-05)
+                        // 3. Inventario / Catálogo (W-03)
+                        composable("inventario") {
+                            InventarioScreen(
+                                onNavigateToNuevoProducto = {
+                                    navController.navigate("nuevo_producto")
+                                },
+                                onNavigateToScanner = {
+                                    navController.navigate("scanner")
+                                },
+                                onTabSelected = { tab ->
+                                    navegarATab(tab)
+                                }
+                            )
+                        }
+
+                        // 4. Formulario Nuevo Producto (W-04)
+                        composable("nuevo_producto") {
+                            NuevoProductoScreen(
+                                onDescartar = {
+                                    navController.popBackStack()
+                                },
+                                onProductoGuardado = {
+                                    navController.popBackStack()
+                                },
+                                onNavigateToScanner = {
+                                    navController.navigate("scanner")
+                                }
+                            )
+                        }
+
+                        // 5. Terminal POS / Cobro Rápido (W-05)
+                        composable("pos") {
+                            CobroRapidoScreen(
+                                onNavigateToConfirmarPago = {
+                                    navController.navigate("confirmar_pago")
+                                },
+                                onNavigateToScanner = {
+                                    navController.navigate("scanner")
+                                },
+                                onTabSelected = { tab ->
+                                    navegarATab(tab)
+                                }
+                            )
+                        }
+
+                        // 6. Confirmar Pago (W-06)
+                        composable("confirmar_pago") {
+                            ConfirmarPagoScreen(
+                                onCancelar = {
+                                    navController.popBackStack()
+                                },
+                                onVentaExitosa = {
+                                    navController.navigate("pos") {
+                                        popUpTo("pos") { inclusive = true }
+                                    }
+                                },
+                                onIrAHistorial = {
+                                    navController.navigate("historial") {
+                                        popUpTo("pos") { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
+
+                        // 7. Historial de Ventas (W-07)
+                        composable("historial") {
+                            HistorialVentasScreen(
+                                onTabSelected = { tab ->
+                                    navegarATab(tab)
+                                }
+                            )
+                        }
+
+                        // 8. Pantalla de Scanner ML Kit
                         composable("scanner") {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 ScannerScreen()
 
-                                // Botón flotante para regresar al dashboard
                                 IconButton(
                                     onClick = { navController.popBackStack() },
                                     modifier = Modifier
@@ -119,7 +204,7 @@ class MainActivity : ComponentActivity() {
                                 ) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = "Regresar al Dashboard",
+                                        contentDescription = "Regresar",
                                         tint = Color.White
                                     )
                                 }

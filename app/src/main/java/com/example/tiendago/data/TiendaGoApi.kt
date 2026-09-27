@@ -11,6 +11,7 @@ import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 import java.util.concurrent.TimeUnit
 
 // --- Estado global de Sesión en memoria ---
@@ -18,18 +19,36 @@ object UserSession {
     var token: String? = null
     var nombre: String = "Administrador TiendaGo"
     var rol: String = "Administrador"
+    var idUsuarioGuid: String = "00000000-0000-0000-0000-000000000001"
+    var idTurnoActual: Long = 1L
     val isLoggedIn: Boolean get() = !token.isNullOrBlank()
 
-    fun actualizar(nuevoToken: String?, nuevoNombre: String?, nuevoRol: String?) {
+    fun authHeader(): String {
+        return if (!token.isNullOrBlank()) "Bearer $token" else ""
+    }
+
+    fun actualizar(
+        nuevoToken: String?,
+        nuevoNombre: String?,
+        nuevoRol: String?,
+        nuevoGuid: String? = null,
+        nuevoTurno: Long = 1L
+    ) {
         token = nuevoToken
         nombre = nuevoNombre?.ifBlank { null } ?: "Administrador TiendaGo"
         rol = nuevoRol?.ifBlank { null } ?: "Administrador"
+        if (!nuevoGuid.isNullOrBlank()) {
+            idUsuarioGuid = nuevoGuid
+        }
+        idTurnoActual = nuevoTurno
     }
 
     fun clear() {
         token = null
         nombre = "Administrador TiendaGo"
         rol = "Administrador"
+        idUsuarioGuid = "00000000-0000-0000-0000-000000000001"
+        idTurnoActual = 1L
     }
 }
 
@@ -99,29 +118,229 @@ data class DashboardResumenResponse(
 
 data class ProductoResponse(
     @SerializedName("idProducto")
-    val idProducto: Int,
+    val idProducto: Int = 0,
 
     @SerializedName("codigoBarra")
     val codigoBarra: String? = null,
 
+    @SerializedName("codigoSku")
+    val codigoSku: String? = null,
+
     @SerializedName("nombre")
-    val nombre: String,
+    val nombre: String = "",
+
+    @SerializedName("nombreProducto")
+    val nombreProducto: String? = null,
 
     @SerializedName("precio")
-    val precio: Double,
+    val precio: Double = 0.0,
+
+    @SerializedName("precioVenta")
+    val precioVenta: Double? = null,
+
+    @SerializedName("costoCompra")
+    val costoCompra: Double = 0.0,
 
     @SerializedName("stock")
-    val stock: Int,
+    val stock: Int = 0,
+
+    @SerializedName("stockActual")
+    val stockActual: Int? = null,
+
+    @SerializedName("stockMinimo")
+    val stockMinimo: Int = 5,
 
     @SerializedName("idCategoria")
-    val idCategoria: Int = 0,
+    val idCategoria: Int = 1,
 
     @SerializedName("nombreCategoria")
     val nombreCategoria: String? = null,
 
+    @SerializedName("urlImagen")
+    val urlImagen: String? = null,
+
+    @SerializedName("estado")
+    val estado: Boolean = true
+) {
+    val displayNombre: String
+        get() = nombre.ifBlank { nombreProducto ?: "Producto sin nombre" }
+
+    val displayCodigo: String
+        get() = codigoBarra?.ifBlank { null }
+            ?: codigoSku?.ifBlank { null }
+            ?: "SKU-${idProducto.toString().padStart(4, '0')}"
+
+    val displayPrecio: Double
+        get() = if (precio > 0.0) precio else (precioVenta ?: 0.0)
+
+    val displayStock: Int
+        get() = stockActual ?: stock
+
+    val esCritico: Boolean
+        get() = displayStock < 5 || displayStock <= stockMinimo
+
+    val displayCategoria: String
+        get() = nombreCategoria?.ifBlank { null } ?: when (idCategoria) {
+            1 -> "Bebidas"
+            2 -> "Snacks"
+            3 -> "Abarrotes"
+            4 -> "Lácteos"
+            5 -> "Limpieza"
+            6 -> "Panadería"
+            else -> "General"
+        }
+}
+
+data class ProductoRequest(
+    @SerializedName("nombre")
+    val nombre: String,
+
+    @SerializedName("nombreProducto")
+    val nombreProducto: String = nombre,
+
+    @SerializedName("codigoBarra")
+    val codigoBarra: String,
+
+    @SerializedName("codigoSku")
+    val codigoSku: String = codigoBarra,
+
+    @SerializedName("precio")
+    val precio: Double,
+
+    @SerializedName("precioVenta")
+    val precioVenta: Double = precio,
+
+    @SerializedName("costoCompra")
+    val costoCompra: Double = 0.0,
+
+    @SerializedName("stock")
+    val stock: Int = 0,
+
+    @SerializedName("stockActual")
+    val stockActual: Int = stock,
+
+    @SerializedName("stockMinimo")
+    val stockMinimo: Int = 5,
+
+    @SerializedName("idCategoria")
+    val idCategoria: Int = 1,
+
+    @SerializedName("urlImagen")
+    val urlImagen: String? = null,
+
     @SerializedName("estado")
     val estado: Boolean = true
 )
+
+data class DetalleVentaRequest(
+    @SerializedName("idProducto")
+    val idProducto: Long,
+
+    @SerializedName("cantidad")
+    val cantidad: Int,
+
+    @SerializedName("precioUnitarioHistorico")
+    val precioUnitarioHistorico: Double? = null
+)
+
+data class VentaRequest(
+    @SerializedName("idTurno")
+    val idTurno: Long = 1,
+
+    @SerializedName("idUsuario")
+    val idUsuario: String = "00000000-0000-0000-0000-000000000001",
+
+    @SerializedName("idMetodoPago")
+    val idMetodoPago: Long = 1, // 1: Efectivo, 2: QR / Transferencia
+
+    @SerializedName("montoRecibido")
+    val montoRecibido: Double = 0.0,
+
+    @SerializedName("cambioEntregado")
+    val cambioEntregado: Double = 0.0,
+
+    @SerializedName("detalles")
+    val detalles: List<DetalleVentaRequest> = emptyList()
+)
+
+data class DetalleVentaResponse(
+    @SerializedName("idDetalle")
+    val idDetalle: Long = 0,
+
+    @SerializedName("idVenta")
+    val idVenta: Long = 0,
+
+    @SerializedName("idProducto")
+    val idProducto: Long = 0,
+
+    @SerializedName("nombreProducto")
+    val nombreProducto: String? = null,
+
+    @SerializedName("codigoSku")
+    val codigoSku: String? = null,
+
+    @SerializedName("cantidad")
+    val cantidad: Int = 0,
+
+    @SerializedName("precioUnitarioHistorico")
+    val precioUnitarioHistorico: Double = 0.0,
+
+    @SerializedName("subtotalLinea")
+    val subtotalLinea: Double = 0.0
+)
+
+data class VentaResponse(
+    @SerializedName("idVenta")
+    val idVenta: Long = 0,
+
+    @SerializedName("idTurno")
+    val idTurno: Long = 1,
+
+    @SerializedName("idUsuario")
+    val idUsuario: String? = null,
+
+    @SerializedName("nombreUsuario")
+    val nombreUsuario: String? = null,
+
+    @SerializedName("idMetodoPago")
+    val idMetodoPago: Long = 1,
+
+    @SerializedName("nombreMetodoPago")
+    val nombreMetodoPago: String? = null,
+
+    @SerializedName("numeroTicket")
+    val numeroTicket: String = "",
+
+    @SerializedName("fechaHora")
+    val fechaHora: String = "",
+
+    @SerializedName("subtotal")
+    val subtotal: Double = 0.0,
+
+    @SerializedName("totalIva")
+    val totalIva: Double = 0.0,
+
+    @SerializedName("totalVenta")
+    val totalVenta: Double = 0.0,
+
+    @SerializedName("montoRecibido")
+    val montoRecibido: Double = 0.0,
+
+    @SerializedName("cambioEntregado")
+    val cambioEntregado: Double = 0.0,
+
+    @SerializedName("estadoVenta")
+    val estadoVenta: String = "Completada",
+
+    @SerializedName("detalles")
+    val detalles: List<DetalleVentaResponse> = emptyList()
+) {
+    val esEfectivo: Boolean
+        get() = idMetodoPago == 1L || nombreMetodoPago?.contains("Efectivo", ignoreCase = true) == true
+
+    val displayMetodoPago: String
+        get() = if (esEfectivo) "Efectivo" else "QR Transferencia"
+}
 
 // --- Endpoints de la API ---
 interface TiendaGoApiService {
@@ -135,17 +354,59 @@ interface TiendaGoApiService {
 
     // Endpoint del Dashboard consolidado
     @GET("api/dashboard/resumen")
-    suspend fun getDashboardResumen(@Header("Authorization") authHeader: String): Response<DashboardResumenResponse>
+    suspend fun getDashboardResumen(
+        @Header("Authorization") authHeader: String
+    ): Response<DashboardResumenResponse>
 
-    // Endpoint para búsqueda y escaneo de productos
+    // --- Catálogo e Inventario ---
+    @GET("api/productos")
+    suspend fun getProductos(
+        @Query("buscar") buscar: String? = null,
+        @Query("categoria") categoria: Long? = null
+    ): Response<List<ProductoResponse>>
+
+    @GET("api/productos/activos")
+    suspend fun getProductosActivos(): Response<List<ProductoResponse>>
+
     @GET("api/productos/buscar/{codigo}")
-    suspend fun buscarPorCodigo(@Path("codigo") codigo: String): Response<ProductoResponse>
+    suspend fun buscarPorCodigo(
+        @Path("codigo") codigo: String
+    ): Response<ProductoResponse>
+
+    @POST("api/productos")
+    suspend fun crearProducto(
+        @Header("Authorization") authHeader: String,
+        @Body request: ProductoRequest
+    ): Response<ProductoResponse>
+
+    // --- Ventas POS ---
+    @POST("api/ventas")
+    suspend fun registrarVenta(
+        @Header("Authorization") authHeader: String,
+        @Body request: VentaRequest
+    ): Response<VentaResponse>
+
+    // --- Historial de Ventas ---
+    @GET("api/ventas/historial")
+    suspend fun getHistorialVentas(
+        @Header("Authorization") authHeader: String,
+        @Query("filtroFecha") filtroFecha: String? = null
+    ): Response<List<VentaResponse>>
+
+    @GET("api/ventas")
+    suspend fun getVentas(
+        @Header("Authorization") authHeader: String
+    ): Response<List<VentaResponse>>
+
+    @GET("api/ventas/turno/{idTurno}")
+    suspend fun getVentasPorTurno(
+        @Header("Authorization") authHeader: String,
+        @Path("idTurno") idTurno: Long
+    ): Response<List<VentaResponse>>
 }
 
 // --- Cliente Retrofit Singleton ---
 object RetrofitClient {
-    // 10.0.2.2 apunta al localhost de la máquina host desde el emulador de Android Studio
-    // Para dispositivo físico en la misma red Wi-Fi usar: "http://192.168.0.3:5000/"
     private const val BASE_URL = "http://192.168.0.3:5000/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {

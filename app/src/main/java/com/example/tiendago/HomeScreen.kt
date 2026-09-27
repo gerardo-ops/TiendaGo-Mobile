@@ -125,11 +125,7 @@ fun HomeScreen(
                         selected = isSelected,
                         onClick = {
                             selectedTab = tabName
-                            when (tabName) {
-                                "Caja" -> onNuevaVentaClick()
-                                "Productos" -> onAgregarProductoClick()
-                                else -> onNavegarTab(tabName)
-                            }
+                            onNavegarTab(tabName)
                         },
                         icon = {
                             Icon(
